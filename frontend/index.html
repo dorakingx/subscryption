@@ -134,6 +134,7 @@
         <div class="wallet-info">
             <div id="wallet-status">Please connect your wallet</div>
             <button class="connect-btn" id="wallet-btn" onclick="connectWallet()">Connect Wallet</button>
+            <button class="connect-btn" id="switch-btn" onclick="switchAccount()" style="display: none; margin-left: 10px; background: #17a2b8;">Switch Account</button>
             <button class="connect-btn" id="disconnect-btn" onclick="disconnectWallet()" style="display: none; margin-left: 10px; background: #dc3545;">Disconnect</button>
             <div id="status-message" class="status-message" style="display: none;"></div>
         </div>
@@ -309,8 +310,9 @@
                         document.getElementById('wallet-status').innerHTML = 
                             `✅ Connected: ${account.substring(0,6)}...${account.substring(38)}`;
                         
-                        // Show disconnect button
+                        // Show disconnect and switch buttons
                         document.getElementById('wallet-btn').style.display = 'none';
+                        document.getElementById('switch-btn').style.display = 'inline-block';
                         document.getElementById('disconnect-btn').style.display = 'inline-block';
                         
                         // Debug: Check PYUSD balance
@@ -409,6 +411,61 @@
                 }
             }
 
+            async function switchAccount() {
+                try {
+                    showStatus('Switching account...', 'loading');
+                    
+                    // Request to select different account from MetaMask
+                    await window.ethereum.request({
+                        method: 'wallet_requestPermissions',
+                        params: [{
+                            eth_accounts: {}
+                        }]
+                    });
+                    
+                    // Get the new account
+                    const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+                    if (accounts.length === 0) {
+                        showStatus('No account selected', 'error');
+                        return;
+                    }
+                    
+                    // Update signer with new account
+                    signer = provider.getSigner();
+                    account = await signer.getAddress();
+                    
+                    // Update UI
+                    document.getElementById('wallet-status').innerHTML = 
+                        `✅ Connected: ${account.substring(0,6)}...${account.substring(38)}`;
+                    
+                    // Reinitialize contracts with new signer
+                    contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+                    pyusdContract = new ethers.Contract(PYUSD_ADDRESS, PYUSD_ABI, signer);
+                    
+                    // Check new account balance
+                    try {
+                        const balance = await pyusdContract.balanceOf(account);
+                        const balanceInEther = ethers.utils.formatEther(balance);
+                        console.log('New account PYUSD Balance:', balanceInEther, 'PYUSD');
+                        if (balance.gt(0)) {
+                            showStatus(`Switched! You have ${balanceInEther} PYUSD`, 'success');
+                        } else {
+                            showStatus(`Switched! Warning: You have ${balanceInEther} PYUSD`, 'error');
+                        }
+                    } catch (error) {
+                        console.error('Error checking balance:', error);
+                    }
+                    
+                } catch (error) {
+                    console.error('Switch account error:', error);
+                    if (error.code === 4001) {
+                        showStatus('Account switch cancelled', 'error');
+                    } else {
+                        showStatus('Failed to switch account: ' + error.message, 'error');
+                    }
+                }
+            }
+
             function disconnectWallet() {
                 // Reset all state
                 provider = null;
@@ -422,6 +479,7 @@
                 // Update UI
                 document.getElementById('wallet-status').innerHTML = 'Please connect your wallet';
                 document.getElementById('wallet-btn').style.display = 'inline-block';
+                document.getElementById('switch-btn').style.display = 'none';
                 document.getElementById('disconnect-btn').style.display = 'none';
                 
                 // Disable subscription buttons
@@ -457,6 +515,7 @@
 
             // Make functions global
             window.connectWallet = connectWallet;
+            window.switchAccount = switchAccount;
             window.disconnectWallet = disconnectWallet;
             window.subscribe = subscribe;
 
