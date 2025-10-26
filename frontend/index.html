@@ -186,11 +186,7 @@
             // Contract addresses (from deployment)
             const CONTRACT_ADDRESS = '0x3D8bE24704F15B7F290B986efced351f31e5B313';
             const PYUSD_ADDRESS = '0xCaC524BcA292aaade2DF8A05cC58F0a65B1B3bB9';
-            const PLANS_PRICES = [
-                ethers.utils.parseEther('10'),  // Plan 0: 10 PYUSD (Basic Plan from contract)
-                ethers.utils.parseEther('25'),  // Plan 1: 25 PYUSD (Pro Plan from contract)
-                ethers.utils.parseEther('100')  // Plan 2: 100 PYUSD (Enterprise Plan from contract)
-            ];
+            let PLANS_PRICES = [];  // Will be filled from contract
 
             // Minimal ABI for what we need
             const CONTRACT_ABI = [
@@ -204,6 +200,32 @@
                 "function allowance(address owner, address spender) external view returns (uint256)",
                 "function balanceOf(address account) external view returns (uint256)"
             ];
+
+            async function loadPlanPrices() {
+                try {
+                    // Fetch plans from contract (assuming 3 plans: 0, 1, 2)
+                    for (let i = 0; i < 3; i++) {
+                        const plan = await contract.plans(i);
+                        const price = plan.price;
+                        PLANS_PRICES[i] = price;
+                        
+                        // Update UI with actual prices
+                        const priceElement = document.querySelector(`.plan-card:nth-child(${i + 1}) .plan-price`);
+                        if (priceElement) {
+                            const priceInEther = ethers.utils.formatEther(price);
+                            priceElement.textContent = `${priceInEther} PYUSD`;
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error loading plan prices:', error);
+                    // Fallback to hardcoded prices
+                    PLANS_PRICES = [
+                        ethers.utils.parseEther('10'),
+                        ethers.utils.parseEther('25'),
+                        ethers.utils.parseEther('100')
+                    ];
+                }
+            }
 
             async function connectWallet() {
                 if (typeof window.ethereum !== 'undefined') {
@@ -260,6 +282,9 @@
                         
                         document.getElementById('wallet-status').innerHTML = 
                             `✅ Connected: ${account.substring(0,6)}...${account.substring(38)}`;
+                        
+                        // Fetch plan prices from contract and update UI
+                        await loadPlanPrices();
                         
                         // Enable all buttons
                         for (let i = 0; i < 3; i++) {
