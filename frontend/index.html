@@ -238,19 +238,19 @@
                         // Update UI with actual prices
                         const priceElement = document.querySelector(`.plan-card:nth-child(${i + 1}) .plan-price`);
                         if (priceElement) {
-                            const priceInEther = ethers.utils.formatEther(price);
-                            priceElement.textContent = `${priceInEther} PYUSD`;
+                            const priceFormatted = ethers.utils.formatUnits(price, 6); // PYUSD has 6 decimals
+                            priceElement.textContent = `${priceFormatted} PYUSD`;
                         }
                         
-                        console.log(`Plan ${i} (ID ${planData.id}): ${ethers.utils.formatEther(price)} PYUSD`);
+                        console.log(`Plan ${i} (ID ${planData.id}): ${ethers.utils.formatUnits(price, 6)} PYUSD`);
                     }
                 } catch (error) {
                     console.error('Error loading plan prices:', error);
                     // Fallback to hardcoded prices (assume new plans are 3, 4, 5)
                     PLANS_PRICES = [
-                        ethers.utils.parseEther('1'),
-                        ethers.utils.parseEther('2'),
-                        ethers.utils.parseEther('3')
+                        ethers.utils.parseUnits('1', 6), // PYUSD has 6 decimals
+                        ethers.utils.parseUnits('2', 6),
+                        ethers.utils.parseUnits('3', 6)
                     ];
                     PLAN_IDS = [3, 4, 5];  // Fallback plan IDs
                     console.warn('Using fallback plan IDs:', PLAN_IDS);
@@ -321,8 +321,8 @@
                         // Debug: Check PYUSD balance
                         try {
                             const balance = await pyusdContract.balanceOf(account);
-                            const balanceInEther = ethers.utils.formatEther(balance);
-                            console.log('PYUSD Balance:', balanceInEther, 'PYUSD');
+                            const balanceFormatted = ethers.utils.formatUnits(balance, 6); // PYUSD has 6 decimals
+                            console.log('PYUSD Balance:', balanceFormatted, 'PYUSD');
                             console.log('Account:', account);
                             console.log('PYUSD Address:', PYUSD_ADDRESS);
                             
@@ -337,9 +337,9 @@
                             }
                             
                             if (balance.gt(0)) {
-                                showStatus(`You have ${balanceInEther} PYUSD`, 'success');
+                                showStatus(`You have ${balanceFormatted} PYUSD`, 'success');
                             } else {
-                                showStatus(`Warning: You have ${balanceInEther} PYUSD at address ${PYUSD_ADDRESS}. Check if this is the correct token.`, 'error');
+                                showStatus(`Warning: You have ${balanceFormatted} PYUSD at address ${PYUSD_ADDRESS}. Check if this is the correct token.`, 'error');
                             }
                         } catch (error) {
                             console.error('Error checking balance:', error);
@@ -394,7 +394,7 @@
                     // Check balance
                     const balance = await pyusdContract.balanceOf(account);
                     if (balance.lt(price)) {
-                        showStatus(`Insufficient PYUSD balance. You need ${ethers.utils.formatEther(price)} PYUSD.`, 'error');
+                        showStatus(`Insufficient PYUSD balance. You need ${ethers.utils.formatUnits(price, 6)} PYUSD.`, 'error');
                         return;
                     }
 
@@ -460,12 +460,12 @@
                     // Check new account balance
                     try {
                         const balance = await pyusdContract.balanceOf(account);
-                        const balanceInEther = ethers.utils.formatEther(balance);
-                        console.log('New account PYUSD Balance:', balanceInEther, 'PYUSD');
+                        const balanceFormatted = ethers.utils.formatUnits(balance, 6); // PYUSD has 6 decimals
+                        console.log('New account PYUSD Balance:', balanceFormatted, 'PYUSD');
                         if (balance.gt(0)) {
-                            showStatus(`Switched! You have ${balanceInEther} PYUSD`, 'success');
+                            showStatus(`Switched! You have ${balanceFormatted} PYUSD`, 'success');
                         } else {
-                            showStatus(`Switched! Warning: You have ${balanceInEther} PYUSD`, 'error');
+                            showStatus(`Switched! Warning: You have ${balanceFormatted} PYUSD`, 'error');
                         }
                     } catch (error) {
                         console.error('Error checking balance:', error);

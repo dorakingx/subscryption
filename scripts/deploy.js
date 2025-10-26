@@ -53,31 +53,32 @@ async function main() {
 
   // Create some default plans
   console.log("\nCreating default subscription plans...");
+  console.log("Note: PYUSD uses 6 decimals on testnet");
   
-  // Plan 1: Basic - 10 PYUSD per month
+  // Plan 1: Basic - 1 PYUSD per month (PYUSD has 6 decimals, not 18)
   const tx1 = await subscription.createPlan(
     "Basic Plan",
-    hre.ethers.parseEther("10"),
+    hre.ethers.parseUnits("1", 6), // 1 PYUSD with 6 decimals
     2592000, // 30 days in seconds
     0 // unlimited subscribers
   );
   await tx1.wait();
   console.log("Created Basic Plan");
 
-  // Plan 2: Pro - 25 PYUSD per month
+  // Plan 2: Pro - 2 PYUSD per month
   const tx2 = await subscription.createPlan(
     "Pro Plan",
-    hre.ethers.parseEther("25"),
+    hre.ethers.parseUnits("2", 6), // 2 PYUSD with 6 decimals
     2592000,
     0
   );
   await tx2.wait();
   console.log("Created Pro Plan");
 
-  // Plan 3: Enterprise - 100 PYUSD per month
+  // Plan 3: Enterprise - 3 PYUSD per month
   const tx3 = await subscription.createPlan(
     "Enterprise Plan",
-    hre.ethers.parseEther("100"),
+    hre.ethers.parseUnits("3", 6), // 3 PYUSD with 6 decimals
     2592000,
     0
   );
@@ -90,9 +91,9 @@ async function main() {
   console.log("Network:", hre.network.name);
   console.log("PYUSD Token:", PYUSD_ADDRESS);
   console.log("\nCreated 3 subscription plans:");
-  console.log("- Basic Plan: 10 PYUSD/month");
-  console.log("- Pro Plan: 25 PYUSD/month");
-  console.log("- Enterprise Plan: 100 PYUSD/month");
+  console.log("- Basic Plan: 1 PYUSD/month");
+  console.log("- Pro Plan: 2 PYUSD/month");
+  console.log("- Enterprise Plan: 3 PYUSD/month");
   console.log("\nUpdate your frontend .env.local with:");
   console.log(`NEXT_PUBLIC_CONTRACT_ADDRESS=${address}`);
   console.log(`NEXT_PUBLIC_PYUSD_ADDRESS=${PYUSD_ADDRESS}`);

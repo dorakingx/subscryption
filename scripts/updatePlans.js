@@ -29,11 +29,12 @@ async function main() {
 
   // Create new plans with 1, 2, 3 PYUSD
   console.log("\nCreating new plans with 1, 2, 3 PYUSD...");
+  console.log("Note: PYUSD uses 6 decimals on testnet");
   
-  // Plan 1: Basic - 1 PYUSD per month
+  // Plan 1: Basic - 1 PYUSD per month (PYUSD has 6 decimals, not 18)
   const tx1 = await subscription.createPlan(
     "Basic Plan",
-    hre.ethers.parseEther("1"),
+    hre.ethers.parseUnits("1", 6), // 1 PYUSD with 6 decimals
     2592000, // 30 days in seconds
     0 // unlimited subscribers
   );
@@ -43,7 +44,7 @@ async function main() {
   // Plan 2: Pro - 2 PYUSD per month
   const tx2 = await subscription.createPlan(
     "Pro Plan",
-    hre.ethers.parseEther("2"),
+    hre.ethers.parseUnits("2", 6), // 2 PYUSD with 6 decimals
     2592000,
     0
   );
@@ -53,7 +54,7 @@ async function main() {
   // Plan 3: Enterprise - 3 PYUSD per month
   const tx3 = await subscription.createPlan(
     "Enterprise Plan",
-    hre.ethers.parseEther("3"),
+    hre.ethers.parseUnits("3", 6), // 3 PYUSD with 6 decimals
     2592000,
     0
   );
