@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PYUSD Subscription Service</title>
-    <script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -162,132 +162,152 @@
     </div>
 
     <script>
-        let provider = null;
-        let signer = null;
-        let account = null;
-        let contract = null;
-        let pyusdContract = null;
-
-        // Contract addresses (from deployment)
-        const CONTRACT_ADDRESS = '0x3D8bE24704F15B7F290B986efced351f31e5B313';
-        const PYUSD_ADDRESS = '0xCaC524BcA292aaade2DF8A05cC58F0a65B1B3bB9';
-        const PLANS_PRICES = [
-            ethers.utils.parseEther('10'),  // Plan 0: 10 PYUSD (Basic Plan from contract)
-            ethers.utils.parseEther('25'),  // Plan 1: 25 PYUSD (Pro Plan from contract)
-            ethers.utils.parseEther('100')  // Plan 2: 100 PYUSD (Enterprise Plan from contract)
-        ];
-
-        // Minimal ABI for what we need
-        const CONTRACT_ABI = [
-            "function subscribe(uint256 planId) external",
-            "function isSubscribed(address user) external view returns (bool)",
-            "function plans(uint256) external view returns (string memory name, uint256 price, uint256 billingPeriod, uint256 maxSubscribers, bool active, uint256 currentSubscribers)"
-        ];
-        
-        const PYUSD_ABI = [
-            "function approve(address spender, uint256 amount) external returns (bool)",
-            "function allowance(address owner, address spender) external view returns (uint256)",
-            "function balanceOf(address account) external view returns (uint256)"
-        ];
-
-        async function connectWallet() {
-            if (typeof window.ethereum !== 'undefined') {
-                try {
-                    showStatus('Connecting to wallet...', 'loading');
-                    
-                    provider = new ethers.providers.Web3Provider(window.ethereum);
-                    await provider.send("eth_requestAccounts", []);
-                    signer = provider.getSigner();
-                    account = await signer.getAddress();
-                    
-                    // Initialize contracts
-                    contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
-                    pyusdContract = new ethers.Contract(PYUSD_ADDRESS, PYUSD_ABI, signer);
-                    
-                    document.getElementById('wallet-status').innerHTML = 
-                        `✅ Connected: ${account.substring(0,6)}...${account.substring(38)}`;
-                    
-                    // Enable all buttons
-                    for (let i = 0; i < 3; i++) {
-                        document.getElementById(`btn-${i}`).disabled = false;
-                    }
-                    
-                    clearStatus();
-                } catch (error) {
-                    showStatus('Failed to connect wallet: ' + error.message, 'error');
-                }
-            } else {
-                showStatus('Please install MetaMask', 'error');
-            }
-        }
-
-        async function subscribe(planId) {
-            if (!account || !contract || !pyusdContract) {
-                showStatus('Please connect your wallet first', 'error');
+        // Wait for ethers to be loaded
+        window.addEventListener('load', function() {
+            if (typeof ethers === 'undefined') {
+                console.error('ethers.js not loaded');
+                document.getElementById('wallet-status').innerHTML = 
+                    '❌ Error: ethers.js failed to load. Please refresh the page.';
                 return;
             }
+            console.log('ethers.js version:', ethers.version);
+            
+            initApp();
+        });
 
-            try {
-                showStatus(`Subscribing to plan ${planId}...`, 'loading');
-                
-                const price = PLANS_PRICES[planId];
-                
-                // Check balance
-                const balance = await pyusdContract.balanceOf(account);
-                if (balance.lt(price)) {
-                    showStatus(`Insufficient PYUSD balance. You need ${ethers.utils.formatEther(price)} PYUSD.`, 'error');
+        function initApp() {
+            // Initialize all app code here
+            let provider = null;
+            let signer = null;
+            let account = null;
+            let contract = null;
+            let pyusdContract = null;
+
+            // Contract addresses (from deployment)
+            const CONTRACT_ADDRESS = '0x3D8bE24704F15B7F290B986efced351f31e5B313';
+            const PYUSD_ADDRESS = '0xCaC524BcA292aaade2DF8A05cC58F0a65B1B3bB9';
+            const PLANS_PRICES = [
+                ethers.utils.parseEther('10'),  // Plan 0: 10 PYUSD (Basic Plan from contract)
+                ethers.utils.parseEther('25'),  // Plan 1: 25 PYUSD (Pro Plan from contract)
+                ethers.utils.parseEther('100')  // Plan 2: 100 PYUSD (Enterprise Plan from contract)
+            ];
+
+            // Minimal ABI for what we need
+            const CONTRACT_ABI = [
+                "function subscribe(uint256 planId) external",
+                "function isSubscribed(address user) external view returns (bool)",
+                "function plans(uint256) external view returns (string memory name, uint256 price, uint256 billingPeriod, uint256 maxSubscribers, bool active, uint256 currentSubscribers)"
+            ];
+            
+            const PYUSD_ABI = [
+                "function approve(address spender, uint256 amount) external returns (bool)",
+                "function allowance(address owner, address spender) external view returns (uint256)",
+                "function balanceOf(address account) external view returns (uint256)"
+            ];
+
+            async function connectWallet() {
+                if (typeof window.ethereum !== 'undefined') {
+                    try {
+                        showStatus('Connecting to wallet...', 'loading');
+                        
+                        provider = new ethers.providers.Web3Provider(window.ethereum);
+                        await provider.send("eth_requestAccounts", []);
+                        signer = provider.getSigner();
+                        account = await signer.getAddress();
+                        
+                        // Initialize contracts
+                        contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+                        pyusdContract = new ethers.Contract(PYUSD_ADDRESS, PYUSD_ABI, signer);
+                        
+                        document.getElementById('wallet-status').innerHTML = 
+                            `✅ Connected: ${account.substring(0,6)}...${account.substring(38)}`;
+                        
+                        // Enable all buttons
+                        for (let i = 0; i < 3; i++) {
+                            document.getElementById(`btn-${i}`).disabled = false;
+                        }
+                        
+                        clearStatus();
+                    } catch (error) {
+                        showStatus('Failed to connect wallet: ' + error.message, 'error');
+                    }
+                } else {
+                    showStatus('Please install MetaMask', 'error');
+                }
+            }
+
+            async function subscribe(planId) {
+                if (!account || !contract || !pyusdContract) {
+                    showStatus('Please connect your wallet first', 'error');
                     return;
                 }
 
-                // Check allowance
-                const allowance = await pyusdContract.allowance(account, CONTRACT_ADDRESS);
-                if (allowance.lt(price)) {
-                    showStatus('Approving PYUSD spending...', 'loading');
-                    const approveTx = await pyusdContract.approve(CONTRACT_ADDRESS, price);
-                    await approveTx.wait();
-                    showStatus('Approval confirmed! Processing subscription...', 'loading');
-                }
-
-                // Subscribe
-                const tx = await contract.subscribe(planId);
-                showStatus('Transaction submitted! Waiting for confirmation...', 'loading');
-                await tx.wait();
-                
-                showStatus(`Successfully subscribed to plan ${planId}!`, 'success');
-                
-                // Check subscription status
-                const isSubscribed = await contract.isSubscribed(account);
-                if (isSubscribed) {
-                    showStatus(`Subscription active! You are now subscribed.`, 'success');
-                }
-                
-            } catch (error) {
-                console.error('Subscribe error:', error);
-                showStatus('Subscription failed: ' + (error.reason || error.message), 'error');
-            }
-        }
-
-        function showStatus(message, type) {
-            const statusDiv = document.getElementById('status-message');
-            statusDiv.textContent = message;
-            statusDiv.className = `status-message ${type}`;
-            statusDiv.style.display = 'block';
-        }
-
-        function clearStatus() {
-            setTimeout(() => {
-                document.getElementById('status-message').style.display = 'none';
-            }, 3000);
-        }
-
-        // Check if wallet is already connected
-        if (typeof window.ethereum !== 'undefined') {
-            window.ethereum.request({ method: 'eth_accounts' })
-                .then(async accounts => {
-                    if (accounts.length > 0) {
-                        await connectWallet();
+                try {
+                    showStatus(`Subscribing to plan ${planId}...`, 'loading');
+                    
+                    const price = PLANS_PRICES[planId];
+                    
+                    // Check balance
+                    const balance = await pyusdContract.balanceOf(account);
+                    if (balance.lt(price)) {
+                        showStatus(`Insufficient PYUSD balance. You need ${ethers.utils.formatEther(price)} PYUSD.`, 'error');
+                        return;
                     }
-                });
+
+                    // Check allowance
+                    const allowance = await pyusdContract.allowance(account, CONTRACT_ADDRESS);
+                    if (allowance.lt(price)) {
+                        showStatus('Approving PYUSD spending...', 'loading');
+                        const approveTx = await pyusdContract.approve(CONTRACT_ADDRESS, price);
+                        await approveTx.wait();
+                        showStatus('Approval confirmed! Processing subscription...', 'loading');
+                    }
+
+                    // Subscribe
+                    const tx = await contract.subscribe(planId);
+                    showStatus('Transaction submitted! Waiting for confirmation...', 'loading');
+                    await tx.wait();
+                    
+                    showStatus(`Successfully subscribed to plan ${planId}!`, 'success');
+                    
+                    // Check subscription status
+                    const isSubscribed = await contract.isSubscribed(account);
+                    if (isSubscribed) {
+                        showStatus(`Subscription active! You are now subscribed.`, 'success');
+                    }
+                    
+                } catch (error) {
+                    console.error('Subscribe error:', error);
+                    showStatus('Subscription failed: ' + (error.reason || error.message), 'error');
+                }
+            }
+
+            function showStatus(message, type) {
+                const statusDiv = document.getElementById('status-message');
+                statusDiv.textContent = message;
+                statusDiv.className = `status-message ${type}`;
+                statusDiv.style.display = 'block';
+            }
+
+            function clearStatus() {
+                setTimeout(() => {
+                    document.getElementById('status-message').style.display = 'none';
+                }, 3000);
+            }
+
+            // Make functions global
+            window.connectWallet = connectWallet;
+            window.subscribe = subscribe;
+
+            // Check if wallet is already connected
+            if (typeof window.ethereum !== 'undefined') {
+                window.ethereum.request({ method: 'eth_accounts' })
+                    .then(async accounts => {
+                        if (accounts.length > 0) {
+                            await connectWallet();
+                        }
+                    });
+            }
         }
     </script>
 </body>
