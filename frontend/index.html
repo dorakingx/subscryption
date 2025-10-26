@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -106,34 +106,34 @@
     <div class="container">
         <header>
             <h1>💰 PYUSD Subscription Service</h1>
-            <p class="subtitle">次世代の分散型サブスクリプションサービス</p>
+            <p class="subtitle">Next-generation decentralized subscription service</p>
         </header>
 
         <div class="wallet-info">
-            <div id="wallet-status">ウォレットを接続してください</div>
-            <button class="connect-btn" onclick="connectWallet()">ウォレット接続</button>
+            <div id="wallet-status">Please connect your wallet</div>
+            <button class="connect-btn" onclick="connectWallet()">Connect Wallet</button>
         </div>
 
         <div class="plans">
             <div class="plan-card">
                 <div class="plan-name">📦 Basic Plan</div>
-                <div class="plan-price">10 PYUSD</div>
-                <div class="plan-period">月額</div>
-                <button class="btn" onclick="subscribe(0)" disabled>購読する</button>
+                <div class="plan-price">1 PYUSD</div>
+                <div class="plan-period">per month</div>
+                <button class="btn" onclick="subscribe(0)" disabled>Subscribe</button>
             </div>
 
             <div class="plan-card">
                 <div class="plan-name">⭐ Pro Plan</div>
-                <div class="plan-price">25 PYUSD</div>
-                <div class="plan-period">月額</div>
-                <button class="btn" onclick="subscribe(1)" disabled>購読する</button>
+                <div class="plan-price">2 PYUSD</div>
+                <div class="plan-period">per month</div>
+                <button class="btn" onclick="subscribe(1)" disabled>Subscribe</button>
             </div>
 
             <div class="plan-card">
                 <div class="plan-name">🚀 Enterprise</div>
-                <div class="plan-price">100 PYUSD</div>
-                <div class="plan-period">月額</div>
-                <button class="btn" onclick="subscribe(2)" disabled>購読する</button>
+                <div class="plan-price">3 PYUSD</div>
+                <div class="plan-period">per month</div>
+                <button class="btn" onclick="subscribe(2)" disabled>Subscribe</button>
             </div>
         </div>
     </div>
@@ -149,32 +149,32 @@
                     });
                     account = accounts[0];
                     document.getElementById('wallet-status').innerHTML = 
-                        `✅ 接続済み: ${account.substring(0,6)}...${account.substring(38)}`;
+                        `✅ Connected: ${account.substring(0,6)}...${account.substring(38)}`;
                     document.querySelectorAll('.btn').forEach(btn => btn.disabled = false);
                 } catch (error) {
-                    alert('ウォレット接続に失敗しました: ' + error.message);
+                    alert('Failed to connect wallet: ' + error.message);
                 }
             } else {
-                alert('MetaMaskをインストールしてください');
+                alert('Please install MetaMask');
             }
         }
 
         async function subscribe(planId) {
             if (!account) {
-                alert('まずウォレットを接続してください');
+                alert('Please connect your wallet first');
                 return;
             }
-            alert('購読機能を有効にするには、スマートコントラクトのデプロイが必要です。\n\nデプロイ後、コントラクトアドレスを設定してください。');
+            alert('To enable subscription functionality, the smart contract needs to be deployed.\n\nPlease configure the contract address after deployment.');
         }
 
-        // ウォレット接続済みチェック
+        // Check if wallet is already connected
         if (typeof window.ethereum !== 'undefined') {
             window.ethereum.request({ method: 'eth_accounts' })
                 .then(accounts => {
                     if (accounts.length > 0) {
                         account = accounts[0];
                         document.getElementById('wallet-status').innerHTML = 
-                            `✅ 接続済み: ${account.substring(0,6)}...${account.substring(38)}`;
+                            `✅ Connected: ${account.substring(0,6)}...${account.substring(38)}`;
                         document.querySelectorAll('.btn').forEach(btn => btn.disabled = false);
                     }
                 });
