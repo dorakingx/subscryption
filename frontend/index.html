@@ -241,12 +241,14 @@
                     }
                 } catch (error) {
                     console.error('Error loading plan prices:', error);
-                    // Fallback to hardcoded prices
+                    // Fallback to hardcoded prices (assume new plans are 3, 4, 5)
                     PLANS_PRICES = [
                         ethers.utils.parseEther('1'),
                         ethers.utils.parseEther('2'),
                         ethers.utils.parseEther('3')
                     ];
+                    PLAN_IDS = [3, 4, 5];  // Fallback plan IDs
+                    console.warn('Using fallback plan IDs:', PLAN_IDS);
                 }
             }
 
@@ -330,10 +332,20 @@
                 }
 
                 try {
+                    // Debug: log current state
+                    console.log('Subscribe attempt:', { planIndex, PLAN_IDS, PLAN_IDS_length: PLAN_IDS.length });
+                    
+                    // Check if plans are loaded
+                    if (!PLAN_IDS || PLAN_IDS.length === 0) {
+                        console.log('Plans not loaded, attempting to load...');
+                        await loadPlanPrices();
+                    }
+                    
                     // Get the actual plan ID from PLAN_IDS array
                     const actualPlanId = PLAN_IDS[planIndex];
                     if (actualPlanId === undefined) {
-                        showStatus('Plan not loaded yet. Please wait and try again.', 'error');
+                        console.error('Plan ID not found for index:', planIndex);
+                        showStatus('Plan not found. Please refresh the page.', 'error');
                         return;
                     }
                     
