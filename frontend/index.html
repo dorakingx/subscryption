@@ -201,7 +201,10 @@
             const PYUSD_ABI = [
                 "function approve(address spender, uint256 amount) external returns (bool)",
                 "function allowance(address owner, address spender) external view returns (uint256)",
-                "function balanceOf(address account) external view returns (uint256)"
+                "function balanceOf(address account) external view returns (uint256)",
+                "function name() external view returns (string memory)",
+                "function symbol() external view returns (string memory)",
+                "function decimals() external view returns (uint8)"
             ];
 
             async function loadPlanPrices() {
@@ -322,13 +325,25 @@
                             console.log('PYUSD Balance:', balanceInEther, 'PYUSD');
                             console.log('Account:', account);
                             console.log('PYUSD Address:', PYUSD_ADDRESS);
+                            
+                            // Additional debug: Check if token contract works
+                            try {
+                                const tokenSymbol = await pyusdContract.symbol ? await pyusdContract.symbol() : 'N/A';
+                                const tokenName = await pyusdContract.name ? await pyusdContract.name() : 'N/A';
+                                console.log('Token Name:', tokenName);
+                                console.log('Token Symbol:', tokenSymbol);
+                            } catch (err) {
+                                console.warn('Could not get token details:', err.message);
+                            }
+                            
                             if (balance.gt(0)) {
                                 showStatus(`You have ${balanceInEther} PYUSD`, 'success');
                             } else {
-                                showStatus(`Warning: You have ${balanceInEther} PYUSD. Please get testnet PYUSD.`, 'error');
+                                showStatus(`Warning: You have ${balanceInEther} PYUSD at address ${PYUSD_ADDRESS}. Check if this is the correct token.`, 'error');
                             }
                         } catch (error) {
                             console.error('Error checking balance:', error);
+                            showStatus('Error: Could not check balance. Token address might be incorrect.', 'error');
                         }
                         
                         // Fetch plan prices from contract and update UI
