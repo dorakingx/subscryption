@@ -133,7 +133,8 @@
 
         <div class="wallet-info">
             <div id="wallet-status">Please connect your wallet</div>
-            <button class="connect-btn" onclick="connectWallet()">Connect Wallet</button>
+            <button class="connect-btn" id="wallet-btn" onclick="connectWallet()">Connect Wallet</button>
+            <button class="connect-btn" id="disconnect-btn" onclick="disconnectWallet()" style="display: none; margin-left: 10px; background: #dc3545;">Disconnect</button>
             <div id="status-message" class="status-message" style="display: none;"></div>
         </div>
 
@@ -308,6 +309,10 @@
                         document.getElementById('wallet-status').innerHTML = 
                             `✅ Connected: ${account.substring(0,6)}...${account.substring(38)}`;
                         
+                        // Show disconnect button
+                        document.getElementById('wallet-btn').style.display = 'none';
+                        document.getElementById('disconnect-btn').style.display = 'inline-block';
+                        
                         // Debug: Check PYUSD balance
                         try {
                             const balance = await pyusdContract.balanceOf(account);
@@ -404,6 +409,39 @@
                 }
             }
 
+            function disconnectWallet() {
+                // Reset all state
+                provider = null;
+                signer = null;
+                account = null;
+                contract = null;
+                pyusdContract = null;
+                PLANS_PRICES = [];
+                PLAN_IDS = [];
+                
+                // Update UI
+                document.getElementById('wallet-status').innerHTML = 'Please connect your wallet';
+                document.getElementById('wallet-btn').style.display = 'inline-block';
+                document.getElementById('disconnect-btn').style.display = 'none';
+                
+                // Disable subscription buttons
+                for (let i = 0; i < 3; i++) {
+                    document.getElementById(`btn-${i}`).disabled = true;
+                }
+                
+                // Reset prices to default
+                document.querySelectorAll('.plan-price').forEach(el => {
+                    const defaultPrices = ['1 PYUSD', '2 PYUSD', '3 PYUSD'];
+                    const index = Array.from(document.querySelectorAll('.plan-price')).indexOf(el);
+                    if (index < defaultPrices.length) {
+                        el.textContent = defaultPrices[index];
+                    }
+                });
+                
+                showStatus('Wallet disconnected', 'success');
+                console.log('Wallet disconnected');
+            }
+
             function showStatus(message, type) {
                 const statusDiv = document.getElementById('status-message');
                 statusDiv.textContent = message;
@@ -419,6 +457,7 @@
 
             // Make functions global
             window.connectWallet = connectWallet;
+            window.disconnectWallet = disconnectWallet;
             window.subscribe = subscribe;
 
             // Check if wallet is already connected
