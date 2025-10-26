@@ -20,10 +20,9 @@
     "@nomicfoundation/hardhat-verify": "^2.1.1",
     "@openzeppelin/contracts": "^5.0.2",
     "dotenv": "^16.4.5",
-    "ethers": "^6.12.0",
-    "hardhat": "^3.0.9",
-    "next": "^16.0.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "hardhat": "^3.0.9"
+  },
+  "dependencies": {
+    "ethers": "^6.12.0"
   }
 }

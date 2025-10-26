@@ -12,8 +12,6 @@ import "./IPYUSD.sol";
  * @notice Supports programmable payment logic, multiple subscription plans, and automatic renewals
  */
 contract PYUSDSubscription is Ownable, ReentrancyGuard, Pausable {
-    using SafeMath for uint256;
-
     // PYUSD token interface
     IPYUSD public pyusd;
 
@@ -51,41 +49,18 @@ contract PYUSDSubscription is Ownable, ReentrancyGuard, Pausable {
     event SubscriptionExpired(address indexed subscriber, uint256 indexed planId);
     event PullerAuthorized(address indexed puller, bool authorized);
     event RefundProcessed(address indexed subscriber, uint256 amount);
-
-    /**
-     * @dev Custom SafeMath library for uint256
-     */
-    library SafeMath {
-        function add(uint256 a, uint256 b) internal pure returns (uint256) {
-            uint256 c = a + b;
-            require(c >= a, "SafeMath: addition overflow");
-            return c;
-        }
-
-        function sub(uint256 a, uint256 b) internal pure returns (uint256) {
-            require(b <= a, "SafeMath: subtraction overflow");
-            return a - b;
-        }
-
-        function mul(uint256 a, uint256 b) internal pure returns (uint256) {
-            if (a == 0) return 0;
-            uint256 c = a * b;
-            require(c / a == b, "SafeMath: multiplication overflow");
-            return c;
-        }
-
-        function div(uint256 a, uint256 b) internal pure returns (uint256) {
-            require(b > 0, "SafeMath: division by zero");
-            return a / b;
-        }
-    }
+    
+    // Additional events for better tracking
+    event AllowanceInsufficient(address indexed subscriber, uint256 required, uint256 current);
+    event PermitDeadlineExceeded(address indexed subscriber, uint256 deadline);
+    event EmergencyWithdrawal(address indexed recipient, uint256 amount);
 
     /**
      * @dev Constructor
      * @param _pyusdAddress The address of the PYUSD token contract
      */
     constructor(address _pyusdAddress) Ownable(msg.sender) {
-        require(_pyusdAddress != address(0), "Invalid PYUSD address");
+        require(_pyusdAddress != address(0), "PYUSD address cannot be zero");
         pyusd = IPYUSD(_pyusdAddress);
     }
 
@@ -93,7 +68,7 @@ contract PYUSDSubscription is Ownable, ReentrancyGuard, Pausable {
      * @dev Modifier to check if caller is authorized to pull payments
      */
     modifier onlyAuthorizedPuller() {
-        require(authorizedPullers[msg.sender] || msg.sender == owner(), "Not authorized to pull payments");
+        require(authorizedPullers[msg.sender] || msg.sender == owner(), "Unauthorized: only authorized pullers can execute");
         _;
     }
 
@@ -112,8 +87,8 @@ contract PYUSDSubscription is Ownable, ReentrancyGuard, Pausable {
         uint256 billingPeriod,
         uint256 maxSubscribers
     ) external onlyOwner returns (uint256) {
-        require(price > 0, "Price must be greater than 0");
-        require(billingPeriod > 0, "Billing period must be greater than 0");
+        require(price > 0, "Plan price must be greater than zero");
+        require(billingPeriod > 0, "Billing period must be greater than zero");
 
         uint256 planId = plans.length;
         plans.push(SubscriptionPlan({
@@ -135,7 +110,7 @@ contract PYUSDSubscription is Ownable, ReentrancyGuard, Pausable {
      * @param active New status
      */
     function updatePlanStatus(uint256 planId, bool active) external onlyOwner {
-        require(planId < plans.length, "Invalid plan ID");
+        require(planId < plans.length, "Invalid plan ID: plan does not exist");
         plans[planId].active = active;
         emit PlanUpdated(planId, active);
     }
@@ -147,18 +122,19 @@ contract PYUSDSubscription is Ownable, ReentrancyGuard, Pausable {
      * @param planId Plan ID to subscribe to
      */
     function subscribe(uint256 planId) external nonReentrant whenNotPaused {
-        require(planId < plans.length, "Invalid plan ID");
+        require(planId < plans.length, "Invalid plan ID: plan does not exist");
         SubscriptionPlan storage plan = plans[planId];
-        require(plan.active, "Plan is not active");
-        require(plan.maxSubscribers == 0 || plan.currentSubscribers < plan.maxSubscribers, "Plan is full");
-        require(!subscriptions[msg.sender].active, "Already subscribed");
+        require(plan.active, "Plan is currently inactive");
+        require(plan.maxSubscribers == 0 || plan.currentSubscribers < plan.maxSubscribers, "Plan has reached maximum subscribers");
+        require(!subscriptions[msg.sender].active, "User already has an active subscription");
 
         // Check if user has approved enough tokens
         uint256 allowance = pyusd.allowance(msg.sender, address(this));
-        require(allowance >= plan.price, "Insufficient allowance");
+        require(allowance >= plan.price, "Insufficient PYUSD allowance for payment");
 
         // Transfer PYUSD from user to contract
-        require(pyusd.transferFrom(msg.sender, address(this), plan.price), "Payment failed");
+        bool transferSuccess = pyusd.transferFrom(msg.sender, address(this), plan.price);
+        require(transferSuccess, "PYUSD transfer failed");
 
         // Update subscription
         UserSubscription storage userSub = subscriptions[msg.sender];
@@ -187,17 +163,20 @@ contract PYUSDSubscription is Ownable, ReentrancyGuard, Pausable {
         bytes32 s,
         uint256 deadline
     ) external nonReentrant whenNotPaused {
-        require(planId < plans.length, "Invalid plan ID");
+        require(planId < plans.length, "Invalid plan ID: plan does not exist");
+        require(block.timestamp <= deadline, "Permit deadline has expired");
+        
         SubscriptionPlan storage plan = plans[planId];
-        require(plan.active, "Plan is not active");
-        require(plan.maxSubscribers == 0 || plan.currentSubscribers < plan.maxSubscribers, "Plan is full");
-        require(!subscriptions[msg.sender].active, "Already subscribed");
+        require(plan.active, "Plan is currently inactive");
+        require(plan.maxSubscribers == 0 || plan.currentSubscribers < plan.maxSubscribers, "Plan has reached maximum subscribers");
+        require(!subscriptions[msg.sender].active, "User already has an active subscription");
 
         // Execute permit
         pyusd.permit(msg.sender, address(this), plan.price, deadline, v, r, s);
 
         // Transfer tokens
-        require(pyusd.transferFrom(msg.sender, address(this), plan.price), "Payment failed");
+        bool transferSuccess = pyusd.transferFrom(msg.sender, address(this), plan.price);
+        require(transferSuccess, "PYUSD transfer failed after permit");
 
         // Update subscription
         UserSubscription storage userSub = subscriptions[msg.sender];
@@ -219,20 +198,21 @@ contract PYUSDSubscription is Ownable, ReentrancyGuard, Pausable {
      */
     function processPayment(address subscriber) external nonReentrant onlyAuthorizedPuller {
         UserSubscription storage userSub = subscriptions[subscriber];
-        require(userSub.active, "Subscription not active");
-        require(block.timestamp >= userSub.nextBillingDate, "Billing date not reached");
+        require(userSub.active, "Subscription is not active");
+        require(block.timestamp >= userSub.nextBillingDate, "Billing date not yet reached");
 
         SubscriptionPlan storage plan = plans[userSub.planId];
 
         // Check allowance
         uint256 allowance = pyusd.allowance(subscriber, address(this));
-        require(allowance >= plan.price, "Insufficient allowance");
+        require(allowance >= plan.price, "Insufficient PYUSD allowance for recurring payment");
 
         // Transfer payment
-        require(pyusd.transferFrom(subscriber, address(this), plan.price), "Payment failed");
+        bool transferSuccess = pyusd.transferFrom(subscriber, address(this), plan.price);
+        require(transferSuccess, "PYUSD transfer failed during payment processing");
 
         // Update subscription
-        userSub.nextBillingDate = userSub.nextBillingDate + plan.billingPeriod;
+        userSub.nextBillingDate += plan.billingPeriod;
         userSub.totalPaid += plan.price;
         userSub.renewalCount++;
 
@@ -244,7 +224,7 @@ contract PYUSDSubscription is Ownable, ReentrancyGuard, Pausable {
      */
     function cancelSubscription() external nonReentrant {
         UserSubscription storage userSub = subscriptions[msg.sender];
-        require(userSub.active, "No active subscription");
+        require(userSub.active, "No active subscription found to cancel");
 
         userSub.active = false;
         plans[userSub.planId].currentSubscribers--;
@@ -256,6 +236,9 @@ contract PYUSDSubscription is Ownable, ReentrancyGuard, Pausable {
      * @dev Check if user is currently subscribed
      * @param user User address
      * @return isSubscribed True if user has active subscription
+     * 
+     * Note: This function does not automatically update expired subscriptions.
+     * Consider calling updateExpiredSubscription() separately if state updates are needed.
      */
     function isSubscribed(address user) external view returns (bool) {
         UserSubscription storage userSub = subscriptions[user];
@@ -267,6 +250,19 @@ contract PYUSDSubscription is Ownable, ReentrancyGuard, Pausable {
         }
 
         return true;
+    }
+
+    /**
+     * @dev Update expired subscription status
+     * @notice This function can be called by anyone to update the status of expired subscriptions
+     */
+    function updateExpiredSubscription(address user) external {
+        UserSubscription storage userSub = subscriptions[user];
+        if (userSub.active && block.timestamp > userSub.nextBillingDate) {
+            userSub.active = false;
+            plans[userSub.planId].currentSubscribers--;
+            emit SubscriptionExpired(user, userSub.planId);
+        }
     }
 
     /**
@@ -307,6 +303,7 @@ contract PYUSDSubscription is Ownable, ReentrancyGuard, Pausable {
      * @param authorized Authorization status
      */
     function setPullerAuthorization(address puller, bool authorized) external onlyOwner {
+        require(puller != address(0), "Puller address cannot be zero");
         authorizedPullers[puller] = authorized;
         emit PullerAuthorized(puller, authorized);
     }
@@ -328,9 +325,28 @@ contract PYUSDSubscription is Ownable, ReentrancyGuard, Pausable {
     /**
      * @dev Emergency withdraw PYUSD tokens (owner only)
      * @param amount Amount to withdraw
+     * 
+     * Security recommendations:
+     * - Consider implementing a time-lock mechanism for large withdrawals
+     * - Consider implementing maximum withdrawal limits per transaction
+     * - Consider requiring multiple owner signatures for large withdrawals
+     * - Consider splitting withdrawals into multiple smaller transactions
+     * - Consider implementing an emergency pause before withdrawals
+     * 
+     * Example implementation for time-lock:
+     * - Store withdrawal requests in a mapping with timestamps
+     * - Require a waiting period (e.g., 24-48 hours) before withdrawal
+     * - Allow cancellation during the waiting period
      */
     function emergencyWithdraw(uint256 amount) external onlyOwner {
-        require(pyusd.transfer(owner(), amount), "Withdrawal failed");
+        uint256 contractBalance = pyusd.balanceOf(address(this));
+        require(amount <= contractBalance, "Withdrawal amount exceeds contract balance");
+        require(amount > 0, "Withdrawal amount must be greater than zero");
+        
+        bool transferSuccess = pyusd.transfer(owner(), amount);
+        require(transferSuccess, "Withdrawal transfer failed");
+        
+        emit EmergencyWithdrawal(owner(), amount);
     }
 
     /**
@@ -349,7 +365,7 @@ contract PYUSDSubscription is Ownable, ReentrancyGuard, Pausable {
             uint256 currentSubscribers
         )
     {
-        require(planId < plans.length, "Invalid plan ID");
+        require(planId < plans.length, "Invalid plan ID: plan does not exist");
         SubscriptionPlan storage plan = plans[planId];
         return (
             plan.name,
