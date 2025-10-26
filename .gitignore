@@ -1,0 +1,28 @@
+node_modules
+.env
+.env.local
+coverage
+coverage.json
+typechain
+typechain-types
+
+# Hardhat files
+cache
+artifacts
+
+# Local env files
+.env*.local
+dist
+dist-ssr
+*.local
+
+# editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
