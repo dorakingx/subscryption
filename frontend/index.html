@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PYUSD Subscription Service</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        .plans {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+        .plan-card {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+        .plan-card:hover {
+            transform: translateY(-5px);
+        }
+        .plan-name {
+            font-size: 1.8rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        .plan-price {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+        .plan-period {
+            color: #666;
+            margin-bottom: 20px;
+        }
+        .btn {
+            width: 100%;
+            padding: 15px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+        .btn:hover {
+            background: #5568d3;
+        }
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .wallet-info {
+            background: rgba(255,255,255,0.9);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .connect-btn {
+            padding: 12px 30px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>💰 PYUSD Subscription Service</h1>
+            <p class="subtitle">次世代の分散型サブスクリプションサービス</p>
+        </header>
+
+        <div class="wallet-info">
+            <div id="wallet-status">ウォレットを接続してください</div>
+            <button class="connect-btn" onclick="connectWallet()">ウォレット接続</button>
+        </div>
+
+        <div class="plans">
+            <div class="plan-card">
+                <div class="plan-name">📦 Basic Plan</div>
+                <div class="plan-price">10 PYUSD</div>
+                <div class="plan-period">月額</div>
+                <button class="btn" onclick="subscribe(0)" disabled>購読する</button>
+            </div>
+
+            <div class="plan-card">
+                <div class="plan-name">⭐ Pro Plan</div>
+                <div class="plan-price">25 PYUSD</div>
+                <div class="plan-period">月額</div>
+                <button class="btn" onclick="subscribe(1)" disabled>購読する</button>
+            </div>
+
+            <div class="plan-card">
+                <div class="plan-name">🚀 Enterprise</div>
+                <div class="plan-price">100 PYUSD</div>
+                <div class="plan-period">月額</div>
+                <button class="btn" onclick="subscribe(2)" disabled>購読する</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let account = null;
+
+        async function connectWallet() {
+            if (typeof window.ethereum !== 'undefined') {
+                try {
+                    const accounts = await window.ethereum.request({ 
+                        method: 'eth_requestAccounts' 
+                    });
+                    account = accounts[0];
+                    document.getElementById('wallet-status').innerHTML = 
+                        `✅ 接続済み: ${account.substring(0,6)}...${account.substring(38)}`;
+                    document.querySelectorAll('.btn').forEach(btn => btn.disabled = false);
+                } catch (error) {
+                    alert('ウォレット接続に失敗しました: ' + error.message);
+                }
+            } else {
+                alert('MetaMaskをインストールしてください');
+            }
+        }
+
+        async function subscribe(planId) {
+            if (!account) {
+                alert('まずウォレットを接続してください');
+                return;
+            }
+            alert('購読機能を有効にするには、スマートコントラクトのデプロイが必要です。\n\nデプロイ後、コントラクトアドレスを設定してください。');
+        }
+
+        // ウォレット接続済みチェック
+        if (typeof window.ethereum !== 'undefined') {
+            window.ethereum.request({ method: 'eth_accounts' })
+                .then(accounts => {
+                    if (accounts.length > 0) {
+                        account = accounts[0];
+                        document.getElementById('wallet-status').innerHTML = 
+                            `✅ 接続済み: ${account.substring(0,6)}...${account.substring(38)}`;
+                        document.querySelectorAll('.btn').forEach(btn => btn.disabled = false);
+                    }
+                });
+        }
+    </script>
+</body>
+</html>
