@@ -215,6 +215,45 @@
                         signer = provider.getSigner();
                         account = await signer.getAddress();
                         
+                        // Check and switch to Sepolia network
+                        const network = await provider.getNetwork();
+                        const sepoliaChainId = 11155111; // Sepolia chain ID
+                        
+                        if (network.chainId !== sepoliaChainId) {
+                            showStatus('Switching to Sepolia network...', 'loading');
+                            try {
+                                await window.ethereum.request({
+                                    method: 'wallet_switchEthereumChain',
+                                    params: [{ chainId: '0xaa36a7' }], // Sepolia chainId in hex
+                                });
+                                // Reload after switch
+                                location.reload();
+                                return;
+                            } catch (switchError) {
+                                if (switchError.code === 4902) {
+                                    // Chain not added, try to add it
+                                    showStatus('Adding Sepolia network...', 'loading');
+                                    await window.ethereum.request({
+                                        method: 'wallet_addEthereumChain',
+                                        params: [{
+                                            chainId: '0xaa36a7',
+                                            chainName: 'Sepolia Test Network',
+                                            nativeCurrency: {
+                                                name: 'Sepolia Ether',
+                                                symbol: 'ETH',
+                                                decimals: 18
+                                            },
+                                            rpcUrls: ['https://ethereum-sepolia-rpc.publicnode.com'],
+                                            blockExplorerUrls: ['https://sepolia.etherscan.io']
+                                        }],
+                                    });
+                                    location.reload();
+                                    return;
+                                }
+                                throw switchError;
+                            }
+                        }
+                        
                         // Initialize contracts
                         contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
                         pyusdContract = new ethers.Contract(PYUSD_ADDRESS, PYUSD_ABI, signer);
