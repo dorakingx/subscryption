@@ -308,6 +308,22 @@
                         document.getElementById('wallet-status').innerHTML = 
                             `✅ Connected: ${account.substring(0,6)}...${account.substring(38)}`;
                         
+                        // Debug: Check PYUSD balance
+                        try {
+                            const balance = await pyusdContract.balanceOf(account);
+                            const balanceInEther = ethers.utils.formatEther(balance);
+                            console.log('PYUSD Balance:', balanceInEther, 'PYUSD');
+                            console.log('Account:', account);
+                            console.log('PYUSD Address:', PYUSD_ADDRESS);
+                            if (balance.gt(0)) {
+                                showStatus(`You have ${balanceInEther} PYUSD`, 'success');
+                            } else {
+                                showStatus(`Warning: You have ${balanceInEther} PYUSD. Please get testnet PYUSD.`, 'error');
+                            }
+                        } catch (error) {
+                            console.error('Error checking balance:', error);
+                        }
+                        
                         // Fetch plan prices from contract and update UI
                         await loadPlanPrices();
                         
