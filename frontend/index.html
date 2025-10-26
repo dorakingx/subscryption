@@ -497,14 +497,29 @@
                 try {
                     const planCount = await contract.getPlanCount();
                     const plansContainer = document.getElementById('plans-container');
+                    
+                    // Clear existing content completely
                     plansContainer.innerHTML = '';
                     
+                    // Collect all active plans
+                    const activePlans = [];
                     for (let i = 0; i < planCount; i++) {
                         const plan = await contract.getPlan(i);
                         if (plan.active) {
-                            const planCard = createPlanCard(i, plan);
-                            plansContainer.appendChild(planCard);
+                            activePlans.push({ id: i, plan: plan });
                         }
+                    }
+                    
+                    // Sort by ID descending to get newest first, then take the last 3
+                    activePlans.sort((a, b) => b.id - a.id);
+                    const displayPlans = activePlans.slice(0, 3).reverse(); // Get newest 3, reverse to show in order
+                    
+                    console.log('Displaying plans:', displayPlans.map(p => `${p.id}: ${p.plan.name}`));
+                    
+                    // Create and append plan cards
+                    for (const planData of displayPlans) {
+                        const planCard = createPlanCard(planData.id, planData.plan);
+                        plansContainer.appendChild(planCard);
                     }
                 } catch (error) {
                     console.error('Error loading plans:', error);
