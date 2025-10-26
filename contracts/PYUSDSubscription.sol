@@ -2,8 +2,8 @@
 pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
 import "./IPYUSD.sol";
 
 /**
@@ -153,7 +153,9 @@ contract PYUSDSubscription is Ownable, ReentrancyGuard, Pausable {
     /**
      * @dev Subscribe using ERC20 Permit (gasless approval)
      * @param planId Plan ID
-     * @param permitData Permit signature data (v, r, s)
+     * @param v Permit signature v component
+     * @param r Permit signature r component
+     * @param s Permit signature s component
      * @param deadline Permit deadline
      */
     function subscribeWithPermit(

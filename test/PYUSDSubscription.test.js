@@ -48,7 +48,7 @@ describe("PYUSDSubscription", function () {
     it("Should not create a plan with zero price", async function () {
       await expect(
         subscriptionContract.createPlan("Test", 0, 2592000, 0)
-      ).to.be.revertedWith("Price must be greater than 0");
+      ).to.be.revertedWith("Plan price must be greater than zero");
     });
   });
 
