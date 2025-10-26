@@ -346,11 +346,15 @@
             <p class="subtitle">Next-generation decentralized subscription service</p>
         </header>
 
-        <div class="wallet-info">
-            <div id="wallet-status">Please connect your wallet</div>
-            <button class="connect-btn" id="wallet-btn" onclick="connectWallet()">Connect Wallet</button>
-            <button class="connect-btn" id="switch-btn" onclick="switchAccount()" style="display: none;">Switch Account</button>
-            <button class="connect-btn" id="disconnect-btn" onclick="disconnectWallet()" style="display: none;">Disconnect</button>
+        <div class="wallet-info" id="wallet-section">
+            <div id="wallet-status">
+                <div style="text-align: center; color: #aaa; font-size: 1.1rem;">Please connect your wallet</div>
+            </div>
+            <div style="text-align: center; margin-top: 20px;">
+                <button class="connect-btn" id="wallet-btn" onclick="connectWallet()">Connect Wallet</button>
+                <button class="connect-btn" id="switch-btn" onclick="switchAccount()" style="display: none;">Switch Account</button>
+                <button class="connect-btn" id="disconnect-btn" onclick="disconnectWallet()" style="display: none;">Disconnect</button>
+            </div>
             <div id="status-message" class="status-message" style="display: none;"></div>
         </div>
 
@@ -486,8 +490,22 @@
                         const balance = await pyusdContract.balanceOf(account);
                         const balanceFormatted = ethers.utils.formatUnits(balance, 6);
                         
-                        document.getElementById('wallet-status').innerHTML = 
-                            `✅ Connected: ${account.substring(0,6)}...${account.substring(38)}<br><strong>PYUSD Balance: ${balanceFormatted} PYUSD</strong>`;
+                        document.getElementById('wallet-status').innerHTML = `
+                            <div style="display: flex; align-items: center; justify-content: space-between; padding: 20px; background: #2a2a2a; border-radius: 12px; border: 1px solid #333;">
+                                <div>
+                                    <div style="color: #aaa; font-size: 0.9rem; margin-bottom: 5px;">Wallet Address</div>
+                                    <div style="color: #e0e0e0; font-size: 1.1rem; font-weight: 600;">
+                                        ${account.substring(0,6)}...${account.substring(38)}
+                                    </div>
+                                </div>
+                                <div style="text-align: right;">
+                                    <div style="color: #aaa; font-size: 0.9rem; margin-bottom: 5px;">PYUSD Balance</div>
+                                    <div style="color: #a77eee; font-size: 1.8rem; font-weight: 700;">
+                                        ${balanceFormatted}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
                         
                         document.getElementById('wallet-btn').style.display = 'none';
                         document.getElementById('switch-btn').style.display = 'inline-block';
@@ -518,6 +536,14 @@
                         const startDate = new Date(sub.startTime * 1000).toLocaleDateString();
                         const nextBillingDate = new Date(sub.nextBillingDate * 1000).toLocaleDateString();
                         
+                        // Check if refund is available (within 24 hours)
+                        const currentTime = Math.floor(Date.now() / 1000);
+                        const refundDeadline = sub.startTime + 86400; // 24 hours
+                        const isRefundable = currentTime <= refundDeadline;
+                        const refundDeadlineDate = new Date(refundDeadline * 1000).toLocaleString();
+                        
+                        const priceFormatted = ethers.utils.formatUnits(plan.price, 6);
+                        
                         const detailsDiv = document.getElementById('subscription-details');
                         detailsDiv.innerHTML = `
                             <div class="dashboard-grid">
@@ -538,6 +564,23 @@
                                     <div class="value" style="color: ${sub.active ? '#28a745' : '#dc3545'}">${sub.active ? 'Active' : 'Inactive'}</div>
                                 </div>
                             </div>
+                            ${isRefundable ? `
+                                <div style="background: #2a2a2a; padding: 15px; border-radius: 8px; margin-top: 20px; border-left: 4px solid #28a745;">
+                                    <div style="color: #9fdfaf; font-weight: 600; margin-bottom: 5px;">💰 Refund Available!</div>
+                                    <div style="color: #aaa; font-size: 0.9rem;">
+                                        You can get a full refund of ${priceFormatted} PYUSD if you cancel before ${refundDeadlineDate}
+                                    </div>
+                                </div>
+                            ` : `
+                                <div style="background: #2a2a2a; padding: 15px; border-radius: 8px; margin-top: 20px; border-left: 4px solid #888;">
+                                    <div style="color: #aaa; font-size: 0.9rem;">
+                                        Refund deadline has passed. Cancellation will not provide a refund.
+                                    </div>
+                                </div>
+                            `}
+                            <button class="btn btn-danger" onclick="cancelSubscription()" style="margin-top: 20px; width: 100%;">
+                                Cancel Subscription
+                            </button>
                         `;
                         
                         subscriptionInfo.style.display = 'block';
@@ -546,6 +589,27 @@
                     }
                 } catch (error) {
                     console.error('Error loading subscription info:', error);
+                }
+            }
+
+            async function cancelSubscription() {
+                if (!confirm('Are you sure you want to cancel your subscription?')) return;
+                
+                try {
+                    showStatus('Cancelling subscription...', 'loading');
+                    const tx = await contract.cancelSubscription();
+                    showStatus('Transaction submitted! Waiting for confirmation...', 'loading');
+                    const receipt = await tx.wait();
+                    
+                    showStatus('Subscription cancelled successfully! Refund will be processed if eligible.', 'success');
+                    addTransactionLink(receipt.transactionHash);
+                    
+                    await loadSubscriptionInfo();
+                    await loadPlans();
+                } catch (error) {
+                    const errorMsg = error.reason || error.data?.message || error.message;
+                    showStatus('Cancellation failed: ' + errorMsg, 'error');
+                    console.error('Cancel error:', error);
                 }
             }
 
@@ -814,8 +878,22 @@
                     const balance = await pyusdContract.balanceOf(account);
                     const balanceFormatted = ethers.utils.formatUnits(balance, 6);
                     
-                    document.getElementById('wallet-status').innerHTML = 
-                        `✅ Connected: ${account.substring(0,6)}...${account.substring(38)}<br><strong>PYUSD Balance: ${balanceFormatted} PYUSD</strong>`;
+                    document.getElementById('wallet-status').innerHTML = `
+                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 20px; background: #2a2a2a; border-radius: 12px; border: 1px solid #333;">
+                            <div>
+                                <div style="color: #aaa; font-size: 0.9rem; margin-bottom: 5px;">Wallet Address</div>
+                                <div style="color: #e0e0e0; font-size: 1.1rem; font-weight: 600;">
+                                    ${account.substring(0,6)}...${account.substring(38)}
+                                </div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="color: #aaa; font-size: 0.9rem; margin-bottom: 5px;">PYUSD Balance</div>
+                                <div style="color: #a77eee; font-size: 1.8rem; font-weight: 700;">
+                                    ${balanceFormatted}
+                                </div>
+                            </div>
+                        </div>
+                    `;
                     
                     await loadSubscriptionInfo();
                     await loadPlans();
@@ -862,6 +940,7 @@
             window.switchAccount = switchAccount;
             window.disconnectWallet = disconnectWallet;
             window.subscribe = subscribe;
+            window.cancelSubscription = cancelSubscription;
             window.pauseContract = pauseContract;
             window.unpauseContract = unpauseContract;
             window.createPlan = createPlan;

@@ -222,14 +222,33 @@ contract PYUSDSubscription is Ownable, ReentrancyGuard, Pausable {
     }
 
     /**
-     * @dev Cancel subscription
+     * @dev Cancel subscription with refund if within 24 hours
+     * @notice Refunds are only available if subscription is cancelled within 24 hours of start time
      */
     function cancelSubscription() external nonReentrant {
         UserSubscription storage userSub = subscriptions[msg.sender];
         require(userSub.active, "No active subscription found to cancel");
 
+        SubscriptionPlan storage plan = plans[userSub.planId];
+        uint256 refundAmount = 0;
+        bool isRefundable = false;
+
+        // Check if subscription started within last 24 hours
+        if (block.timestamp <= userSub.startTime + 1 days) {
+            isRefundable = true;
+            refundAmount = plan.price;
+        }
+
+        // Deactivate subscription
         userSub.active = false;
         plans[userSub.planId].currentSubscribers--;
+
+        // Process refund if eligible
+        if (isRefundable && refundAmount > 0) {
+            bool transferSuccess = pyusd.transfer(msg.sender, refundAmount);
+            require(transferSuccess, "Refund transfer failed");
+            emit RefundProcessed(msg.sender, refundAmount);
+        }
 
         emit SubscriptionCancelled(msg.sender);
     }
