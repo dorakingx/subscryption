@@ -187,6 +187,7 @@
             const CONTRACT_ADDRESS = '0x3D8bE24704F15B7F290B986efced351f31e5B313';
             const PYUSD_ADDRESS = '0xCaC524BcA292aaade2DF8A05cC58F0a65B1B3bB9';
             let PLANS_PRICES = [];  // Will be filled from contract
+            let PLAN_IDS = [];  // Will store actual plan IDs from contract
 
             // Minimal ABI for what we need
             const CONTRACT_ABI = [
@@ -203,11 +204,31 @@
 
             async function loadPlanPrices() {
                 try {
-                    // Fetch plans from contract (assuming 3 plans: 0, 1, 2)
-                    for (let i = 0; i < 3; i++) {
+                    // Get total number of plans
+                    const planCount = await contract.getPlanCount();
+                    
+                    // Find the last 3 active plans (new plans have IDs 3, 4, 5)
+                    const activePlans = [];
+                    for (let i = 0; i < planCount; i++) {
                         const plan = await contract.plans(i);
-                        const price = plan.price;
+                        if (plan.active) {
+                            activePlans.push({ id: i, plan });
+                        }
+                    }
+                    
+                    // Sort by ID descending to get the newest plans first
+                    activePlans.sort((a, b) => b.id - a.id);
+                    
+                    // Take the last 3 active plans (which should be the new 1, 2, 3 PYUSD plans)
+                    const displayPlans = activePlans.slice(0, 3).reverse(); // reverse to maintain order
+                    
+                    // Update prices
+                    PLAN_IDS = [];  // Reset plan IDs
+                    for (let i = 0; i < Math.min(displayPlans.length, 3); i++) {
+                        const planData = displayPlans[i];
+                        const price = planData.plan.price;
                         PLANS_PRICES[i] = price;
+                        PLAN_IDS[i] = planData.id;  // Store actual plan ID
                         
                         // Update UI with actual prices
                         const priceElement = document.querySelector(`.plan-card:nth-child(${i + 1}) .plan-price`);
@@ -215,14 +236,16 @@
                             const priceInEther = ethers.utils.formatEther(price);
                             priceElement.textContent = `${priceInEther} PYUSD`;
                         }
+                        
+                        console.log(`Plan ${i} (ID ${planData.id}): ${ethers.utils.formatEther(price)} PYUSD`);
                     }
                 } catch (error) {
                     console.error('Error loading plan prices:', error);
                     // Fallback to hardcoded prices
                     PLANS_PRICES = [
-                        ethers.utils.parseEther('10'),
-                        ethers.utils.parseEther('25'),
-                        ethers.utils.parseEther('100')
+                        ethers.utils.parseEther('1'),
+                        ethers.utils.parseEther('2'),
+                        ethers.utils.parseEther('3')
                     ];
                 }
             }
@@ -300,16 +323,23 @@
                 }
             }
 
-            async function subscribe(planId) {
+            async function subscribe(planIndex) {
                 if (!account || !contract || !pyusdContract) {
                     showStatus('Please connect your wallet first', 'error');
                     return;
                 }
 
                 try {
-                    showStatus(`Subscribing to plan ${planId}...`, 'loading');
+                    // Get the actual plan ID from PLAN_IDS array
+                    const actualPlanId = PLAN_IDS[planIndex];
+                    if (actualPlanId === undefined) {
+                        showStatus('Plan not loaded yet. Please wait and try again.', 'error');
+                        return;
+                    }
                     
-                    const price = PLANS_PRICES[planId];
+                    showStatus(`Subscribing to plan ${planIndex} (ID ${actualPlanId})...`, 'loading');
+                    
+                    const price = PLANS_PRICES[planIndex];
                     
                     // Check balance
                     const balance = await pyusdContract.balanceOf(account);
@@ -327,12 +357,12 @@
                         showStatus('Approval confirmed! Processing subscription...', 'loading');
                     }
 
-                    // Subscribe
-                    const tx = await contract.subscribe(planId);
+                    // Subscribe using the actual plan ID
+                    const tx = await contract.subscribe(actualPlanId);
                     showStatus('Transaction submitted! Waiting for confirmation...', 'loading');
                     await tx.wait();
                     
-                    showStatus(`Successfully subscribed to plan ${planId}!`, 'success');
+                    showStatus(`Successfully subscribed to plan ${planIndex}!`, 'success');
                     
                     // Check subscription status
                     const isSubscribed = await contract.isSubscribed(account);
