@@ -536,12 +536,6 @@
                         const startDate = new Date(sub.startTime * 1000).toLocaleDateString();
                         const nextBillingDate = new Date(sub.nextBillingDate * 1000).toLocaleDateString();
                         
-                        // Check if refund is available (within 24 hours)
-                        const currentTime = Math.floor(Date.now() / 1000);
-                        const refundDeadline = sub.startTime + 86400; // 24 hours
-                        const isRefundable = currentTime <= refundDeadline;
-                        const refundDeadlineDate = new Date(refundDeadline * 1000).toLocaleString();
-                        
                         const priceFormatted = ethers.utils.formatUnits(plan.price, 6);
                         
                         const detailsDiv = document.getElementById('subscription-details');
@@ -564,20 +558,12 @@
                                     <div class="value" style="color: ${sub.active ? '#28a745' : '#dc3545'}">${sub.active ? 'Active' : 'Inactive'}</div>
                                 </div>
                             </div>
-                            ${isRefundable ? `
-                                <div style="background: #2a2a2a; padding: 15px; border-radius: 8px; margin-top: 20px; border-left: 4px solid #28a745;">
-                                    <div style="color: #9fdfaf; font-weight: 600; margin-bottom: 5px;">💰 Refund Available!</div>
-                                    <div style="color: #aaa; font-size: 0.9rem;">
-                                        You can get a full refund of ${priceFormatted} PYUSD if you cancel before ${refundDeadlineDate}
-                                    </div>
+                            <div style="background: #2a2a2a; padding: 15px; border-radius: 8px; margin-top: 20px; border-left: 4px solid #28a745;">
+                                <div style="color: #9fdfaf; font-weight: 600; margin-bottom: 5px;">💰 Full Refund Available!</div>
+                                <div style="color: #aaa; font-size: 0.9rem;">
+                                    You will receive a full refund of ${priceFormatted} PYUSD when you cancel your subscription.
                                 </div>
-                            ` : `
-                                <div style="background: #2a2a2a; padding: 15px; border-radius: 8px; margin-top: 20px; border-left: 4px solid #888;">
-                                    <div style="color: #aaa; font-size: 0.9rem;">
-                                        Refund deadline has passed. Cancellation will not provide a refund.
-                                    </div>
-                                </div>
-                            `}
+                            </div>
                             <button class="btn btn-danger" onclick="cancelSubscription()" style="margin-top: 20px; width: 100%;">
                                 Cancel Subscription
                             </button>
@@ -601,7 +587,7 @@
                     showStatus('Transaction submitted! Waiting for confirmation...', 'loading');
                     const receipt = await tx.wait();
                     
-                    showStatus('Subscription cancelled successfully! Refund will be processed if eligible.', 'success');
+                    showStatus('Subscription cancelled successfully! Full refund has been processed.', 'success');
                     addTransactionLink(receipt.transactionHash);
                     
                     await loadSubscriptionInfo();
