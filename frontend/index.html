@@ -354,48 +354,24 @@
             <div id="status-message" class="status-message" style="display: none;"></div>
         </div>
 
-        <!-- Tab Navigation -->
-        <div class="tab-nav">
-            <button class="tab-btn active" onclick="switchTab('plans')">📦 Plans</button>
-            <button class="tab-btn" onclick="switchTab('dashboard')">📊 Dashboard</button>
-            <button class="tab-btn" onclick="switchTab('allowance')">🔐 Allowance</button>
-            <button class="tab-btn" id="admin-tab" onclick="switchTab('admin')" style="display: none;">⚙️ Admin</button>
-        </div>
-
-        <!-- Plans Tab -->
-        <div id="plans-tab" class="tab-content active">
-            <div class="plans" id="plans-container">
-                <div class="plan-card">
-                    <div class="plan-name">📦 Loading...</div>
-                    <div class="plan-price">-</div>
-                    <div class="plan-period">-</div>
-                    <button class="btn" disabled>Loading...</button>
-                </div>
+        <!-- Plans -->
+        <div class="plans" id="plans-container">
+            <div class="plan-card">
+                <div class="plan-name">📦 Loading...</div>
+                <div class="plan-price">-</div>
+                <div class="plan-period">-</div>
+                <button class="btn" disabled>Loading...</button>
             </div>
         </div>
 
-        <!-- Dashboard Tab -->
-        <div id="dashboard-tab" class="tab-content">
-            <div class="dashboard-card">
-                <h2 style="margin-bottom: 20px;">Your Subscription</h2>
-                <div id="dashboard-content">
-                    <p style="text-align: center; color: #aaa;">Connect your wallet to view your subscription details</p>
-                </div>
-            </div>
+        <!-- Subscription Info -->
+        <div class="wallet-info" id="subscription-info" style="display: none;">
+            <h2 style="margin-bottom: 20px; color: #e0e0e0;">Your Subscription</h2>
+            <div id="subscription-details"></div>
         </div>
 
-        <!-- Allowance Tab -->
-        <div id="allowance-tab" class="tab-content">
-            <div class="dashboard-card">
-                <h2 style="margin-bottom: 20px;">PYUSD Allowance</h2>
-                <div id="allowance-content">
-                    <p style="text-align: center; color: #aaa;">Connect your wallet to view allowance</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Admin Tab -->
-        <div id="admin-tab-content" class="tab-content">
+        <!-- Admin Tab (for owner only) -->
+        <div id="admin-tab-content" class="tab-content" style="display: none;">
             <div class="admin-panel" id="admin-content">
                 <h2>Admin Panel</h2>
                 <p>Only the contract owner can access this panel.</p>
@@ -506,18 +482,20 @@
                         contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
                         pyusdContract = new ethers.Contract(PYUSD_ADDRESS, PYUSD_ABI, signer);
                         
+                        // Check balance first
+                        const balance = await pyusdContract.balanceOf(account);
+                        const balanceFormatted = ethers.utils.formatUnits(balance, 6);
+                        
                         document.getElementById('wallet-status').innerHTML = 
-                            `✅ Connected: ${account.substring(0,6)}...${account.substring(38)}`;
+                            `✅ Connected: ${account.substring(0,6)}...${account.substring(38)}<br><strong>PYUSD Balance: ${balanceFormatted} PYUSD</strong>`;
                         
                         document.getElementById('wallet-btn').style.display = 'none';
                         document.getElementById('switch-btn').style.display = 'inline-block';
                         document.getElementById('disconnect-btn').style.display = 'inline-block';
                         
-                        // Check balance and load data
-                        await checkBalance();
+                        // Load data
                         await loadPlans();
-                        await loadDashboard();
-                        await loadAllowance();
+                        await loadSubscriptionInfo();
                         await checkAdminAccess();
                         
                         clearStatus();
@@ -529,17 +507,45 @@
                 }
             }
 
-            async function checkBalance() {
+            async function loadSubscriptionInfo() {
                 try {
-                    const balance = await pyusdContract.balanceOf(account);
-                    const balanceFormatted = ethers.utils.formatUnits(balance, 6);
-                    if (balance.gt(0)) {
-                        showStatus(`You have ${balanceFormatted} PYUSD`, 'success');
+                    const isSubscribed = await contract.isSubscribed(account);
+                    const subscriptionInfo = document.getElementById('subscription-info');
+                    
+                    if (isSubscribed) {
+                        const sub = await contract.getUserSubscription(account);
+                        const plan = await contract.getPlan(sub.planId);
+                        const startDate = new Date(sub.startTime * 1000).toLocaleDateString();
+                        const nextBillingDate = new Date(sub.nextBillingDate * 1000).toLocaleDateString();
+                        
+                        const detailsDiv = document.getElementById('subscription-details');
+                        detailsDiv.innerHTML = `
+                            <div class="dashboard-grid">
+                                <div class="dashboard-item">
+                                    <label>Plan</label>
+                                    <div class="value">${plan.name}</div>
+                                </div>
+                                <div class="dashboard-item">
+                                    <label>Start Date</label>
+                                    <div class="value">${startDate}</div>
+                                </div>
+                                <div class="dashboard-item">
+                                    <label>Next Billing Date</label>
+                                    <div class="value">${nextBillingDate}</div>
+                                </div>
+                                <div class="dashboard-item">
+                                    <label>Status</label>
+                                    <div class="value" style="color: ${sub.active ? '#28a745' : '#dc3545'}">${sub.active ? 'Active' : 'Inactive'}</div>
+                                </div>
+                            </div>
+                        `;
+                        
+                        subscriptionInfo.style.display = 'block';
                     } else {
-                        showStatus(`Warning: You have ${balanceFormatted} PYUSD`, 'error');
+                        subscriptionInfo.style.display = 'none';
                     }
                 } catch (error) {
-                    console.error('Error checking balance:', error);
+                    console.error('Error loading subscription info:', error);
                 }
             }
 
@@ -587,9 +593,7 @@
                     <div class="plan-name">📦 ${plan.name}</div>
                     <div class="plan-price">${price} PYUSD</div>
                     <div class="plan-period">per ${billingDays} days</div>
-                    <div class="plan-subscribers">${plan.currentSubscribers} subscribers</div>
                     <button class="btn" onclick="subscribe(${planId})">Subscribe</button>
-                    <button class="btn btn-secondary" onclick="subscribeWithPermit(${planId})">Subscribe with Permit</button>
                 `;
                 
                 return card;
@@ -627,7 +631,7 @@
                     showStatus(`Successfully subscribed to ${plan.name}!`, 'success');
                     addTransactionLink(receipt.transactionHash);
                     
-                    await loadDashboard();
+                    await loadSubscriptionInfo();
                     await loadPlans();
                 } catch (error) {
                     const errorMsg = error.reason || error.data?.message || error.message;
@@ -636,198 +640,6 @@
                 }
             }
 
-            async function subscribeWithPermit(planId) {
-                try {
-                    showStatus('Preparing Permit signature...', 'loading');
-                    const plan = await contract.getPlan(planId);
-                    const value = plan.price;
-                    
-                    // Check balance
-                    const balance = await pyusdContract.balanceOf(account);
-                    if (balance.lt(value)) {
-                        showStatus(`Insufficient PYUSD balance. You need ${ethers.utils.formatUnits(value, 6)} PYUSD.`, 'error');
-                        return;
-                    }
-
-                    // Get nonce
-                    const nonce = await pyusdContract.nonces(account);
-                    const deadline = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
-                    
-                    // Get domain separator
-                    const domainSeparator = await pyusdContract.DOMAIN_SEPARATOR();
-                    
-                    // Create permit message
-                    const permitTypes = {
-                        Permit: [
-                            { name: 'owner', type: 'address' },
-                            { name: 'spender', type: 'address' },
-                            { name: 'value', type: 'uint256' },
-                            { name: 'nonce', type: 'uint256' },
-                            { name: 'deadline', type: 'uint256' }
-                        ]
-                    };
-                    
-                    const permitMessage = {
-                        owner: account,
-                        spender: CONTRACT_ADDRESS,
-                        value: value,
-                        nonce: nonce,
-                        deadline: deadline
-                    };
-                    
-                    // Get network for chainId
-                    const network = await provider.getNetwork();
-                    
-                    // Build domain
-                    const domain = {
-                        name: 'PayPal USD',
-                        version: '1',
-                        chainId: network.chainId,
-                        verifyingContract: PYUSD_ADDRESS
-                    };
-                    
-                    // Request signature
-                    showStatus('Please sign the Permit message in MetaMask...', 'loading');
-                    const signature = await signer._signTypedData(domain, permitTypes, permitMessage);
-                    
-                    // Extract v, r, s
-                    const sig = ethers.utils.splitSignature(signature);
-                    
-                    // Call subscribeWithPermit
-                    showStatus('Submitting subscription with Permit...', 'loading');
-                    const tx = await contract.subscribeWithPermit(planId, sig.v, sig.r, sig.s, deadline);
-                    showStatus('Transaction submitted! Waiting for confirmation...', 'loading');
-                    const receipt = await tx.wait();
-                    
-                    showStatus(`Successfully subscribed using Permit!`, 'success');
-                    addTransactionLink(receipt.transactionHash);
-                    
-                    await loadDashboard();
-                    await loadPlans();
-                } catch (error) {
-                    const errorMsg = error.reason || error.data?.message || error.message;
-                    showStatus('Permit subscription failed: ' + errorMsg, 'error');
-                    console.error('Permit error:', error);
-                }
-            }
-
-            async function loadDashboard() {
-                try {
-                    const isSubscribed = await contract.isSubscribed(account);
-                    const dashboardContent = document.getElementById('dashboard-content');
-                    
-                    if (isSubscribed) {
-                        const sub = await contract.getUserSubscription(account);
-                        const plan = await contract.getPlan(sub.planId);
-                        const planName = plan.name;
-                        const price = ethers.utils.formatUnits(sub.totalPaid, 6);
-                        const nextBilling = new Date(sub.nextBillingDate * 1000).toLocaleDateString();
-                        
-                        dashboardContent.innerHTML = `
-                            <div class="dashboard-grid">
-                                <div class="dashboard-item">
-                                    <label>Plan</label>
-                                    <div class="value">${planName}</div>
-                                </div>
-                                <div class="dashboard-item">
-                                    <label>Status</label>
-                                    <div class="value" style="color: ${sub.active ? '#28a745' : '#dc3545'}">${sub.active ? 'Active' : 'Inactive'}</div>
-                                </div>
-                                <div class="dashboard-item">
-                                    <label>Total Paid</label>
-                                    <div class="value">${price} PYUSD</div>
-                                </div>
-                                <div class="dashboard-item">
-                                    <label>Next Billing</label>
-                                    <div class="value">${nextBilling}</div>
-                                </div>
-                            </div>
-                            <button class="btn btn-danger" onclick="cancelSubscription()">Cancel Subscription</button>
-                        `;
-                    } else {
-                        dashboardContent.innerHTML = '<p style="text-align: center; color: #aaa;">You are not subscribed to any plan yet.</p>';
-                    }
-                } catch (error) {
-                    console.error('Error loading dashboard:', error);
-                }
-            }
-
-            async function cancelSubscription() {
-                if (!confirm('Are you sure you want to cancel your subscription?')) return;
-                
-                try {
-                    showStatus('Cancelling subscription...', 'loading');
-                    const tx = await contract.cancelSubscription();
-                    showStatus('Transaction submitted! Waiting for confirmation...', 'loading');
-                    const receipt = await tx.wait();
-                    
-                    showStatus('Subscription cancelled successfully!', 'success');
-                    addTransactionLink(receipt.transactionHash);
-                    
-                    await loadDashboard();
-                } catch (error) {
-                    const errorMsg = error.reason || error.data?.message || error.message;
-                    showStatus('Cancellation failed: ' + errorMsg, 'error');
-                    console.error('Cancel error:', error);
-                }
-            }
-
-            async function loadAllowance() {
-                try {
-                    const allowance = await pyusdContract.allowance(account, CONTRACT_ADDRESS);
-                    const allowanceFormatted = ethers.utils.formatUnits(allowance, 6);
-                    
-                    const allowanceContent = document.getElementById('allowance-content');
-                    allowanceContent.innerHTML = `
-                        <div class="allowance-section">
-                            <h3 style="margin-bottom: 15px;">Current Allowance</h3>
-                            <p style="font-size: 1.5rem; font-weight: bold; color: #667eea;">${allowanceFormatted} PYUSD</p>
-                            <p style="margin-top: 10px; color: #aaa; font-size: 0.9rem;">
-                                This is the amount the contract can withdraw from your wallet for subscriptions.
-                            </p>
-                        </div>
-                        <div class="allowance-section">
-                            <h3 style="margin-bottom: 15px;">Update Allowance</h3>
-                            <div class="input-group">
-                                <input type="number" id="allowance-amount" step="0.01" placeholder="Amount (PYUSD)" />
-                                <button class="btn" onclick="updateAllowance()">Approve</button>
-                            </div>
-                            <p style="margin-top: 10px; color: #aaa; font-size: 0.9rem;">
-                                Set a higher allowance to avoid approving for each subscription.
-                            </p>
-                        </div>
-                    `;
-                } catch (error) {
-                    console.error('Error loading allowance:', error);
-                }
-            }
-
-            async function updateAllowance() {
-                const amountInput = document.getElementById('allowance-amount');
-                const amount = parseFloat(amountInput.value);
-                
-                if (isNaN(amount) || amount <= 0) {
-                    showStatus('Please enter a valid amount', 'error');
-                    return;
-                }
-                
-                try {
-                    showStatus('Approving PYUSD...', 'loading');
-                    const approveAmount = ethers.utils.parseUnits(amount.toString(), 6);
-                    const tx = await pyusdContract.approve(CONTRACT_ADDRESS, approveAmount);
-                    showStatus('Transaction submitted! Waiting for confirmation...', 'loading');
-                    const receipt = await tx.wait();
-                    
-                    showStatus(`Allowance updated to ${amount} PYUSD!`, 'success');
-                    addTransactionLink(receipt.transactionHash);
-                    
-                    await loadAllowance();
-                } catch (error) {
-                    const errorMsg = error.reason || error.data?.message || error.message;
-                    showStatus('Approval failed: ' + errorMsg, 'error');
-                    console.error('Approve error:', error);
-                }
-            }
 
             async function checkAdminAccess() {
                 try {
@@ -998,12 +810,15 @@
                     contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
                     pyusdContract = new ethers.Contract(PYUSD_ADDRESS, PYUSD_ABI, signer);
                     
-                    document.getElementById('wallet-status').innerHTML = 
-                        `✅ Connected: ${account.substring(0,6)}...${account.substring(38)}`;
+                    // Update balance
+                    const balance = await pyusdContract.balanceOf(account);
+                    const balanceFormatted = ethers.utils.formatUnits(balance, 6);
                     
-                    await checkBalance();
-                    await loadDashboard();
-                    await loadAllowance();
+                    document.getElementById('wallet-status').innerHTML = 
+                        `✅ Connected: ${account.substring(0,6)}...${account.substring(38)}<br><strong>PYUSD Balance: ${balanceFormatted} PYUSD</strong>`;
+                    
+                    await loadSubscriptionInfo();
+                    await loadPlans();
                     await checkAdminAccess();
                     
                 } catch (error) {
@@ -1023,10 +838,8 @@
                 document.getElementById('switch-btn').style.display = 'none';
                 document.getElementById('disconnect-btn').style.display = 'none';
                 
-                document.getElementById('dashboard-content').innerHTML = '<p style="text-align: center; color: #aaa;">Connect your wallet to view your subscription details</p>';
-                document.getElementById('allowance-content').innerHTML = '<p style="text-align: center; color: #aaa;">Connect your wallet to view allowance</p>';
-                
-                document.getElementById('admin-tab').style.display = 'none';
+                // Clear subscription info
+                document.getElementById('subscription-info').style.display = 'none';
                 
                 showStatus('Wallet disconnected', 'success');
             }
@@ -1049,14 +862,10 @@
             window.switchAccount = switchAccount;
             window.disconnectWallet = disconnectWallet;
             window.subscribe = subscribe;
-            window.subscribeWithPermit = subscribeWithPermit;
-            window.cancelSubscription = cancelSubscription;
-            window.updateAllowance = updateAllowance;
             window.pauseContract = pauseContract;
             window.unpauseContract = unpauseContract;
             window.createPlan = createPlan;
             window.emergencyWithdraw = emergencyWithdraw;
-            window.switchTab = switchTab;
 
             // Check if wallet is already connected
             if (typeof window.ethereum !== 'undefined') {
