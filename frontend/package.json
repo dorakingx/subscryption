@@ -6,8 +6,8 @@
     "node": ">=20.9.0"
   },
   "scripts": {
-    "prebuild": "node scripts/generate-runtime-config.js",
-    "predev": "node scripts/generate-runtime-config.js",
+    "prebuild": "node scripts/check-node-version.js && node scripts/generate-runtime-config.js",
+    "predev": "node scripts/check-node-version.js && node scripts/generate-runtime-config.js",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
