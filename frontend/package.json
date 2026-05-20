@@ -2,7 +2,12 @@
   "name": "pyusd-subscription-frontend",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20.9.0"
+  },
   "scripts": {
+    "prebuild": "node scripts/generate-runtime-config.js",
+    "predev": "node scripts/generate-runtime-config.js",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",

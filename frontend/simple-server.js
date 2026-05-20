@@ -6,7 +6,7 @@ const PORT = 3000;
 
 const server = http.createServer((req, res) => {
   let filePath = '.' + req.url;
-  if (filePath === './') filePath = './index.html';
+  if (filePath === './') filePath = './public/index.html';
 
   fs.readFile(filePath, (err, content) => {
     if (err) {

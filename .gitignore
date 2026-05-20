@@ -1,4 +1,5 @@
 node_modules
+.next
 .env
 .env.local
 coverage
@@ -15,6 +16,9 @@ artifacts
 dist
 dist-ssr
 *.local
+
+# Generated at build time from NEXT_PUBLIC_* env vars
+frontend/public/runtime-config.js
 
 # editor directories and files
 .vscode/*

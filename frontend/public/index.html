@@ -359,20 +359,13 @@
         </div>
 
         <!-- Plans -->
-        <div class="plans" id="plans-container">
-            <div class="plan-card">
-                <div class="plan-name">📦 Loading...</div>
-                <div class="plan-price">-</div>
-                <div class="plan-period">-</div>
-                <button class="btn" disabled>Loading...</button>
-            </div>
-        </div>
+        <div class="plans" id="plans-container"></div>
 
         <!-- Subscription Info -->
         <div class="wallet-info" id="subscription-info" style="display: none;">
             <h2 style="margin-bottom: 20px; color: #e0e0e0;">Your Subscription</h2>
             <div id="subscription-details"></div>
-        </div>
+            </div>
 
         <!-- Admin Tab (for owner only) -->
         <div id="admin-tab-content" class="tab-content" style="display: none;">
@@ -383,6 +376,7 @@
         </div>
     </div>
 
+    <script src="/runtime-config.js"></script>
     <script>
         // Wait for ethers to be loaded
         window.addEventListener('load', function() {
@@ -398,14 +392,15 @@
         });
 
         function initApp() {
-            // Contract addresses
-            const CONTRACT_ADDRESS = '0x3D8bE24704F15B7F290B986efced351f31e5B313';
-            const PYUSD_ADDRESS = '0xCaC524BcA292aaade2DF8A05cC58F0a65B1B3bB9';
-            const CHAIN_ID = 11155111; // Sepolia
+            const cfg = window.__RUNTIME_CONFIG || {};
+            const CONTRACT_ADDRESS = cfg.contractAddress || '0x3D8bE24704F15B7F290B986efced351f31e5B313';
+            const PYUSD_ADDRESS = cfg.pyusdAddress || '0xCaC524BcA292aaade2DF8A05cC58F0a65B1B3bB9';
+            const CHAIN_ID = cfg.chainId || 11155111;
+            const EXPLORER_BASE_URL = cfg.explorerBaseUrl || 'https://sepolia.etherscan.io';
             
             let provider = null;
             let signer = null;
-            let account = null;
+        let account = null;
             let contract = null;
             let pyusdContract = null;
             
@@ -442,8 +437,8 @@
             ];
 
             // Global functions
-            async function connectWallet() {
-                if (typeof window.ethereum !== 'undefined') {
+        async function connectWallet() {
+            if (typeof window.ethereum !== 'undefined') {
                     try {
                         showStatus('Connecting to wallet...', 'loading');
                         
@@ -615,10 +610,20 @@
                             activePlans.push({ id: i, plan: plan });
                         }
                     }
-                    
-                    // Sort by ID descending to get newest first, then take the last 3
-                    activePlans.sort((a, b) => b.id - a.id);
-                    const displayPlans = activePlans.slice(0, 3).reverse(); // Get newest 3, reverse to show in order
+
+                    // Deduplicate by plan name (keep highest planId per name)
+                    const byName = new Map();
+                    for (const entry of activePlans) {
+                        const existing = byName.get(entry.plan.name);
+                        if (!existing || entry.id > existing.id) {
+                            byName.set(entry.plan.name, entry);
+                        }
+                    }
+                    const uniquePlans = Array.from(byName.values());
+
+                    // Sort by ID ascending, take up to 3 plans
+                    uniquePlans.sort((a, b) => a.id - b.id);
+                    const displayPlans = uniquePlans.slice(-3);
                     
                     console.log('Displaying plans:', displayPlans.map(p => `${p.id}: ${p.plan.name}`));
                     
@@ -836,7 +841,7 @@
 
             function addTransactionLink(txHash) {
                 const statusDiv = document.getElementById('status-message');
-                const txUrl = `https://sepolia.etherscan.io/tx/${txHash}`;
+                const txUrl = `${EXPLORER_BASE_URL}/tx/${txHash}`;
                 statusDiv.innerHTML = statusDiv.textContent + `<br><a href="${txUrl}" target="_blank">View on Etherscan</a>`;
             }
 
@@ -933,13 +938,13 @@
             window.emergencyWithdraw = emergencyWithdraw;
 
             // Check if wallet is already connected
-            if (typeof window.ethereum !== 'undefined') {
-                window.ethereum.request({ method: 'eth_accounts' })
+        if (typeof window.ethereum !== 'undefined') {
+            window.ethereum.request({ method: 'eth_accounts' })
                     .then(async accounts => {
-                        if (accounts.length > 0) {
+                    if (accounts.length > 0) {
                             await connectWallet();
-                        }
-                    });
+                    }
+                });
             }
         }
     </script>
